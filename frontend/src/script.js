@@ -1,119 +1,222 @@
+```javascript
 const API_URL = "https://personal-finance-advisor-bot-final.onrender.com";
 
 const chatBox = document.getElementById("chatBox");
 const userInput = document.getElementById("userInput");
 const sendButton = document.getElementById("sendButton");
 
+// Store conversation history
+let chatHistory = [];
+
+
+// ==========================================
+// ADD MESSAGE TO CHAT UI
+// ==========================================
+
 function addMessage(message, type) {
 
-```
-const messageDiv = document.createElement("div");
+    const messageDiv = document.createElement("div");
 
-messageDiv.className = "message " + type;
+    messageDiv.className = "message " + type;
 
-messageDiv.textContent = message;
+    messageDiv.textContent = message;
 
-chatBox.appendChild(messageDiv);
+    chatBox.appendChild(messageDiv);
 
-chatBox.scrollTop = chatBox.scrollHeight;
-```
-
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+
+// ==========================================
+// SEND MESSAGE TO FASTAPI
+// ==========================================
 
 async function sendMessage() {
 
-```
-const message = userInput.value.trim();
+    const message = userInput.value.trim();
 
-if (!message) {
-    return;
-}
-
-addMessage(message, "user");
-
-userInput.value = "";
-
-sendButton.disabled = true;
-sendButton.textContent = "Sending...";
-
-try {
-
-    /*
-     * Change "/chat" below if your backend uses
-     * a different API endpoint.
-     */
-
-    const response = await fetch(
-        `${API_URL}/chat`,
-        {
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json"
-            },
-
-            body: JSON.stringify({
-                message: message
-            })
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            `Server returned ${response.status}`
-        );
+    if (!message) {
+        return;
     }
 
-    const data = await response.json();
+    // Show user's message
+    addMessage(message, "user");
 
-    /*
-     * Supports several common backend response formats.
-     */
+    userInput.value = "";
 
-    const reply =
-        data.response ||
-        data.reply ||
-        data.message ||
-        data.answer ||
-        "I received your request, but no response was returned.";
+    sendButton.disabled = true;
+    sendButton.textContent = "Thinking...";
 
-    addMessage(reply, "bot");
 
-} catch (error) {
+    try {
 
-    console.error("API Error:", error);
+        // Get JWT token saved after login
+        const token = localStorage.getItem("credit_token");
 
-    addMessage(
-        "Sorry, I couldn't connect to the finance advisor server. Please try again.",
-        "bot"
-    );
+        if (!token) {
 
-} finally {
+            throw new Error(
+                "Please log in before using the AI advisor."
+            );
+        }
 
-    sendButton.disabled = false;
-    sendButton.textContent = "Send";
 
-    userInput.focus();
+        // ==========================================
+        // CALL YOUR ACTUAL FASTAPI ENDPOINT
+        // ==========================================
+
+        const response = await fetch(
+            `${API_URL}/api/advisor/chat`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+
+                    // FastAPI current_user() requires this
+                    "Authorization": `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+
+                    message: message,
+
+                    // Backend expects:
+                    // history: [{ role, content }]
+
+                    history: chatHistory.slice(-10)
+
+                })
+            }
+        );
+
+
+        // ==========================================
+        // HANDLE HTTP ERRORS
+        // ==========================================
+
+        if (response.status === 401) {
+
+            localStorage.removeItem("credit_token");
+
+            throw new Error(
+                "Your session has expired. Please log in again."
+            );
+        }
+
+
+        if (!response.ok) {
+
+            let errorMessage =
+                `Server returned ${response.status}`;
+
+            try {
+
+                const errorData =
+                    await response.json();
+
+                if (errorData.detail) {
+                    errorMessage = errorData.detail;
+                }
+
+            } catch {
+                // Keep default error message
+            }
+
+            throw new Error(errorMessage);
+        }
+
+
+        // ==========================================
+        // READ FASTAPI RESPONSE
+        // ==========================================
+
+        const data = await response.json();
+
+
+        // Your backend returns:
+        //
+        // {
+        //     "reply": "...",
+        //     "source": "gemini"
+        // }
+
+        const reply =
+            data.reply ||
+            "I received your request, but no response was returned.";
+
+
+        // ==========================================
+        // SAVE CONVERSATION HISTORY
+        // ==========================================
+
+        chatHistory.push({
+            role: "user",
+            content: message
+        });
+
+        chatHistory.push({
+            role: "assistant",
+            content: reply
+        });
+
+        // Keep only last 10 messages
+        chatHistory = chatHistory.slice(-10);
+
+
+        // ==========================================
+        // DISPLAY AI RESPONSE
+        // ==========================================
+
+        addMessage(reply, "bot");
+
+
+    } catch (error) {
+
+        console.error("API Error:", error);
+
+        addMessage(
+            error.message ||
+            "Sorry, I couldn't connect to the finance advisor server.",
+            "bot"
+        );
+
+
+    } finally {
+
+        sendButton.disabled = false;
+        sendButton.textContent = "Send";
+
+        userInput.focus();
+    }
 }
-```
 
-}
+
+// ==========================================
+// SEND BUTTON
+// ==========================================
 
 sendButton.addEventListener(
-"click",
-sendMessage
+    "click",
+    sendMessage
 );
+
+
+// ==========================================
+// ENTER KEY
+// ==========================================
 
 userInput.addEventListener(
-"keydown",
-function(event) {
+    "keydown",
+    function(event) {
 
-```
-    if (event.key === "Enter") {
-        sendMessage();
+        if (event.key === "Enter") {
+
+            event.preventDefault();
+
+            sendMessage();
+        }
+
     }
-
-}
-```
-
 );
+```
