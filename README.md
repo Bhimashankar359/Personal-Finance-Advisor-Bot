@@ -2,6 +2,9 @@
 
 An intelligent, full-stack personal finance tracker and conversational advisor. Features natural language financial assistance powered by **Google Gemini AI**, real-time budget management, expense tracking, savings goals, and secure JWT authentication with optional Google OAuth.
 
+[![Demo Video](https://img.shields.io/badge/Demo_Video-Google_Drive-FF5722?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/drive/folders/1vNr_B7odesmi6HcN0bg6ORKl_DfgjYfX)
+[![Project Documentation](https://img.shields.io/badge/Project_Document-Google_Drive-4285F4?style=for-the-badge&logo=googledocs&logoColor=white)](https://drive.google.com/drive/folders/1vNr_B7odesmi6HcN0bg6ORKl_DfgjYfX)
+
 ---
 
 ## ✨ Features
